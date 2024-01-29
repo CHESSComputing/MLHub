@@ -20,13 +20,22 @@ curl http://localhost:port/models/<model_name>
 curl http://localhost:port/predict \
     -v -X POST \
     -H "Authorization: bearer $token" \
+    -H "Accept: applicatin/json" \
     -H "Content-type: application/json" \
-    -d@/path/file.json
+    -d@/path/input.json
+
+where input.json has the form:
+{"input":[1,2,3], "model": "model", "type": "TensorFlow", "backend": "GoFake"}
 
 # delete existing model
-curl http://localhost:port/models/<model_name> \
+curl http://localhost:port/delete
     -v -X DELETE \
-    -H "Authorization: bearer $token"
+    -H "Authorization: bearer $token" \
+    -H "Content-type: application/json" \
+    -d@/path/model.json
+
+where model.json has the form:
+{"model": "model", "type": "TensorFlow", "version": "latest"}
 
 # get documentation
 curl http://localhost:port/docs/docs
