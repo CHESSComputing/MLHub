@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
+
 	srvConfig "github.com/CHESSComputing/golib/config"
 	mongo "github.com/CHESSComputing/golib/mongo"
 	bson "go.mongodb.org/mongo-driver/bson"
@@ -20,7 +23,7 @@ func metaInsert(rec Record) error {
 // metaUpdate updates record in MLHub database
 func metaUpdate(rec Record) error {
 	spec := bson.M{"model": rec.Model}
-	meta := bson.M{"model": rec.Model, "type": rec.Type, "meta_data": rec.MetaData}
+	meta := bson.M{"model": rec.Model, "type": rec.Type}
 	err := mongo.UpsertRecord(
 		srvConfig.Config.MLHub.MongoDB.DBName,
 		srvConfig.Config.MLHub.MongoDB.DBColl,
@@ -57,10 +60,18 @@ func metaRecords(model, mlType, version string) ([]Record, error) {
 		spec, 0, -1)
 	var records []Record
 	for _, rec := range results {
-		r := Record{}
+		var r Record
 		delete(rec, "_id")
-		// assign rec (type map) to MetaData
-		r.MetaData = rec
+		data, err := json.Marshal(rec)
+		if err != nil {
+			log.Printf("Umable to marshal record %+v, error %v", rec, err)
+			continue
+		}
+		err = json.Unmarshal(data, &r)
+		if err != nil {
+			log.Printf("Umable to unmarshal record %+v to Record data-struct, error %v", rec, err)
+			continue
+		}
 		records = append(records, r)
 	}
 	return records, nil
