@@ -315,7 +315,7 @@ func findModelFile(fileName, mlType, version string) string {
 		return nil
 	})
 	if err != nil {
-		log.Println("Unable to find %s file in %s for type=%s version=%s", fileName, StorageDir, mlType, version)
+		log.Printf("Unable to find %s file in %s for type=%s version=%s", fileName, StorageDir, mlType, version)
 	}
 	return fname
 }
