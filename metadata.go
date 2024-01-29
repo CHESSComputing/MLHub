@@ -24,6 +24,9 @@ func metaInsert(rec Record) error {
 func metaUpdate(rec Record) error {
 	spec := bson.M{"model": rec.Model}
 	meta := bson.M{"model": rec.Model, "type": rec.Type}
+	if Verbose > 0 {
+		log.Printf("update meta-record for spec %+v", spec)
+	}
 	err := mongo.UpsertRecord(
 		srvConfig.Config.MLHub.MongoDB.DBName,
 		srvConfig.Config.MLHub.MongoDB.DBColl,
@@ -33,13 +36,15 @@ func metaUpdate(rec Record) error {
 }
 
 // metaRemove removes given model from MLHub database
-func metaRemove(model string) error {
-	spec := bson.M{"name": model}
-	mongo.Remove(
+func metaRemove(spec bson.M) error {
+	if Verbose > 0 {
+		log.Printf("remove meta-record for spec %+v", spec)
+	}
+	err := mongo.Remove(
 		srvConfig.Config.MLHub.MongoDB.DBName,
 		srvConfig.Config.MLHub.MongoDB.DBColl,
 		spec)
-	return nil
+	return err
 }
 
 // metaRecords retrieves records from underlying MLHub database
