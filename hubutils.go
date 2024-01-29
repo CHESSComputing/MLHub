@@ -88,7 +88,7 @@ func PredictJSONInput(uri string, rec Record, r *http.Request) ([]byte, string, 
 	defer rsp.Body.Close()
 	data, err = io.ReadAll(rsp.Body)
 	if Verbose > 1 {
-		log.Println("backend %s return %s error %v", rec.Backend, string(data), err)
+		log.Printf("backend %s return %s error %v", rec.Backend, string(data), err)
 	}
 	return data, mtype, err
 }
