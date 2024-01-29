@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,8 +25,76 @@ import (
 // Predict function fetches prediction for given uri, model and client's
 // HTTP request. Code is based on the following example:
 // https://golangbyexample.com/http-mutipart-form-body-golang/
-func Predict(rec Record, r *http.Request) ([]byte, error) {
-	var uri string // TODO: find it from config MLBackends
+func Predict(rec Record, r *http.Request) ([]byte, string, error) {
+	mtype := ""
+	log.Printf("search ML backend for record: %+v", rec)
+	backend, err := mlBackend(rec.Backend, rec.Type)
+	if err != nil {
+		return []byte{}, mtype, err
+	}
+	if Verbose > 0 {
+		log.Printf("found ML backend %+v", backend)
+	}
+	uri := backend.URI
+	for _, rec := range backend.Apis {
+		if rec.Name == "predict" {
+			if r.Method != rec.Method {
+				msg := fmt.Sprintf("method mismatch for %+v, got %s", backend, r.Method)
+				return []byte{}, mtype, errors.New(msg)
+			}
+			uri = fmt.Sprintf("%s/%s", backend.URI, rec.Endpoint)
+		}
+	}
+	if r.Header.Get("Accept") == "application/json" {
+		return PredictJSONInput(uri, rec, r)
+	} else if r.Header.Get("Accept") == "application/octet-stream" {
+		return PredictMultipart(uri, rec, r)
+	} else {
+		msg := fmt.Sprintf("Unsupported mtime '%s' for uri %s", r.Header.Get("Accept"), uri)
+		return []byte{}, mtype, errors.New(msg)
+	}
+}
+
+func PredictJSONInput(uri string, rec Record, r *http.Request) ([]byte, string, error) {
+	mtype := ""
+	input := rec.Input
+	if Verbose > 0 {
+		log.Printf("Predict uri=%s rec %+v", uri, rec)
+	}
+	data, err := json.Marshal(input)
+	if err != nil {
+		return []byte{}, mtype, err
+	}
+
+	// form HTTP request
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	if Verbose > 0 {
+		log.Printf("POST request to %s with body\n%v", uri, string(data))
+	}
+	req, err := http.NewRequest("POST", uri, bytes.NewReader(data))
+	if err != nil {
+		return data, mtype, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	rsp, err := client.Do(req)
+	if rsp.StatusCode != http.StatusOK {
+		msg := fmt.Sprintf("request to %s failed with response code: %d", rec.Backend, rsp.StatusCode)
+		log.Println(msg, "error", err)
+		return []byte{}, mtype, errors.New(msg)
+	}
+	mtype = rsp.Header.Get("Content-type")
+	defer rsp.Body.Close()
+	data, err = io.ReadAll(rsp.Body)
+	if Verbose > 1 {
+		log.Println("backend %s return %s error %v", rec.Backend, string(data), err)
+	}
+	return data, mtype, err
+}
+
+func PredictMultipart(uri string, rec Record, r *http.Request) ([]byte, string, error) {
+	mtype := ""
 	// parse incoming HTTP request multipart form
 	err := r.ParseMultipartForm(32 << 20) // maxMemory
 
@@ -83,16 +152,17 @@ func Predict(rec Record, r *http.Request) ([]byte, error) {
 	}
 	req, err := http.NewRequest("POST", uri, bytes.NewReader(body.Bytes()))
 	if err != nil {
-		return data, err
+		return data, mtype, err
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rsp, err := client.Do(req)
 	if rsp.StatusCode != http.StatusOK {
 		log.Printf("Request failed with response code: %d", rsp.StatusCode)
 	}
+	mtype = rsp.Header.Get("Content-type")
 	defer rsp.Body.Close()
 	data, err = io.ReadAll(rsp.Body)
-	return data, err
+	return data, mtype, err
 }
 
 // Upload function uploads record to MetaData database, then
@@ -171,28 +241,23 @@ func uploadBundle(rec Record, r *http.Request) error {
 }
 
 // helper function to find ML backend record
-func mlBackend(name, rtype string) (MLBackend, error) {
+func mlBackend(name, rtype string) (srvConfig.MLBackend, error) {
+	var mlBackend srvConfig.MLBackend
 	backends := srvConfig.Config.MLHub.ML.MLBackends
 	for _, rec := range backends {
 		if Verbose > 0 {
 			log.Printf("### ML backend record %+v", rec)
 		}
 		if rec.Name == name && rec.Type == rtype {
-			mlRec := MLBackend{
-				Name: name,
-				Type: rtype,
-				URI:  rec.URI,
-			}
-			return mlRec, nil
+			return rec, nil
 		}
 	}
 	msg := fmt.Sprintf("No ML backend found with name=%s type=%s", name, rtype)
-	return MLBackend{}, errors.New(msg)
+	return mlBackend, errors.New(msg)
 }
 
 // helper functiont to upload bundle to TFaaS backend
 func uploadBundleTFaaS(rec Record, r *http.Request) error {
-	// curl -v -X POST -H"Content-Encoding: gzip" -H"content-type: application/octet-stream" --data-binary @$model_tarball $turl/upload
 	if Verbose > 0 {
 		log.Println("uploadBundleTFaaS", rec)
 	}
@@ -262,21 +327,12 @@ func uploadBundleScikit(rec Record, r *http.Request) error {
 }
 
 // helper function to get ML record for given HTTP request
-func modelRecord(r *http.Request) (Record, error) {
-	var rec Record
+func modelRecord(rec Record) (Record, error) {
+	var record Record
+	model := rec.Model
+	version := rec.Version
+	mtype := rec.Type
 
-	model := r.FormValue("model")
-	if model == "" {
-		msg := fmt.Sprintf("Unable to find model in MetaData database")
-		log.Printf("ERROR: %s, HTTP request %+v", msg, r)
-		return rec, errors.New(msg)
-	}
-	version := r.FormValue("version")
-	mtype := r.FormValue("mtype")
-
-	if Verbose > 0 {
-		log.Printf("get meta-data for model=%s type=%s version=%s", model, mtype, version)
-	}
 	// get ML meta-data
 	records, err := metaRecords(model, mtype, version)
 	if err != nil {
@@ -288,8 +344,23 @@ func modelRecord(r *http.Request) (Record, error) {
 		msg := fmt.Sprintf("Incorrect number of MetaData records %+v", records)
 		return rec, errors.New(msg)
 	}
-	rec = records[0]
-	return rec, nil
+	record = records[0]
+	if Verbose > 0 {
+		log.Printf("meta-data for model=%s type=%s version=%s, record=%+v", model, mtype, version, record)
+	}
+	// assign input data to our meta-data record
+	record.Input = rec.Input
+	// convert mongo record (map[string]any) to Record data type
+	data, err := json.Marshal(record)
+	if err != nil {
+		return record, err
+	}
+	var mRec Record
+	err = json.Unmarshal(data, &mRec)
+	if err != nil {
+		return mRec, err
+	}
+	return mRec, nil
 }
 
 // helper function to find model file name for given parameters
