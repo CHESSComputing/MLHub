@@ -42,7 +42,11 @@ func formData(r *http.Request) bool {
 func PredictHandler(c *gin.Context) {
 	r := c.Request
 
-	rec, err := modelRecord(r)
+	// parse input JSON payload
+	var inputRecord Record
+	c.BindJSON(&inputRecord)
+
+	rec, err := modelRecord(inputRecord)
 	if err != nil {
 		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
 		c.JSON(http.StatusBadRequest, rec)
@@ -51,14 +55,13 @@ func PredictHandler(c *gin.Context) {
 	if Verbose > 0 {
 		log.Printf("InferenceHandler found %+v", rec)
 	}
-	data, err := Predict(rec, r)
+	data, mtype, err := Predict(rec, r)
 	if err == nil {
-		c.Data(http.StatusOK, "application/octet-stream", data)
+		c.Data(http.StatusOK, mtype, data)
 		return
 	}
 	resp := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
 	c.JSON(http.StatusBadRequest, resp)
-	return
 }
 
 // DownloadHandler handles download action of ML model from back-end server via
@@ -86,25 +89,14 @@ func DownloadHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
+	// form link to download model bundle file
 	rec := records[0]
-	// get bundle link
-	val, ok := rec.MetaData["bundle"]
-	if !ok {
-		msg := fmt.Sprintf("No bundle file found for model=%s type=%s version=%s", model, mlType, version)
-		rec := services.Response("MLHub", http.StatusBadRequest, services.NotFoundError, errors.New(msg))
-		c.JSON(http.StatusBadRequest, rec)
-		return
-	}
-	fileName := val.(string)
-	fname := findModelFile(fileName, mlType, version)
-	// form link to download the model bundle
+	fname := findModelFile(rec.Bundle, mlType, version)
 	bname := strings.Replace(fname, StorageDir, "", -1)
 	downloadURL := fmt.Sprintf("/bundles%s", bname)
 	if Verbose > 0 {
 		log.Println("download", downloadURL)
 	}
-
-	//     http.Redirect(c.Writer, c.Request, downloadURL, http.StatusSeeOther)
 	c.Redirect(http.StatusSeeOther, downloadURL)
 }
 
@@ -147,7 +139,7 @@ func UploadHandler(c *gin.Context) {
 	}
 
 	if Verbose > 0 {
-		log.Printf("### model=%v type=%v bundle=%v version=%v ref=%v dis=%v desc=%v", model, mlType, bundle, version, reference, discipline, description)
+		log.Printf("model=%v type=%v bundle=%v version=%v ref=%v dis=%v desc=%v", model, mlType, bundle, version, reference, discipline, description)
 	}
 
 	// get file name bundle
@@ -184,10 +176,7 @@ func UploadHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
-	rclaims := claims.RegisteredClaims
-	user := rclaims.Subject
-	// assign oauth attributes to the record
-	rec.UserName = user
+	rec.UserName = claims.CustomClaims.User
 
 	// perform upload action
 	err = Upload(rec, r)
@@ -225,7 +214,6 @@ func DeleteHandler(c *gin.Context) {
 // ModelsHandler provides information about registered ML models
 func ModelsHandler(c *gin.Context) {
 	// TODO: Add parameters for /models endpoint, eg q=query, limit, idx for pagination
-	var records []map[string]any
 	mRecords, err := metaRecords("", "", "")
 	if err != nil {
 		msg := fmt.Sprintf("unable to get meta-data, error=%v", err)
@@ -233,10 +221,7 @@ func ModelsHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, rec)
 		return
 	}
-	for _, r := range mRecords {
-		records = append(records, r.MetaData)
-	}
-	c.JSON(http.StatusOK, records)
+	c.JSON(http.StatusOK, mRecords)
 }
 
 // DocsHandler handles status of MLHub server
