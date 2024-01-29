@@ -17,6 +17,7 @@ import (
 	server "github.com/CHESSComputing/golib/server"
 	services "github.com/CHESSComputing/golib/services"
 	"github.com/gin-gonic/gin"
+	bson "go.mongodb.org/mongo-driver/bson"
 )
 
 // DocParam defines parameters for uri binding
@@ -43,10 +44,10 @@ func PredictHandler(c *gin.Context) {
 	r := c.Request
 
 	// parse input JSON payload
-	var inputRecord Record
-	c.BindJSON(&inputRecord)
+	var spec Record
+	c.BindJSON(&spec)
 
-	rec, err := modelRecord(inputRecord)
+	rec, err := modelRecord(spec)
 	if err != nil {
 		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
 		c.JSON(http.StatusBadRequest, rec)
@@ -191,24 +192,50 @@ func UploadHandler(c *gin.Context) {
 // GetHandler handles GET HTTP requests, this request will
 // delete ML model in backend and MetaData database
 func DeleteHandler(c *gin.Context) {
-	model := c.Request.FormValue("model")
-	var ok bool
-	if ok {
-		if Verbose > 0 {
-			log.Printf("delete ML model %s", model)
-		}
-		// delete ML model in MetaData database
-		err := metaRemove(model)
+	// parse input JSON payload
+	var spec Record
+	c.BindJSON(&spec)
+	model := spec.Model
+	mlType := spec.Type
+	version := spec.Version
+	if version == "" {
+		msg := "HTTP request does not provide ML model version"
+		rec := services.Response("MLHub", http.StatusBadRequest, services.HttpRequestError, errors.New(msg))
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
+	if mlType == "" {
+		msg := "HTTP request does not provide ML model type"
+		rec := services.Response("MLHub", http.StatusBadRequest, services.HttpRequestError, errors.New(msg))
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
+	if Verbose > 0 {
+		log.Printf("request to delete ML model %s type %s version %s", model, mlType, version)
+	}
+	records, err := metaRecords(model, mlType, version)
+	if err != nil {
+		rec := services.Response("MLHub", http.StatusBadRequest, services.MetaError, err)
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
+	for _, rec := range records {
+		log.Printf("Remove %+v", rec)
+		err = removeBundle(rec)
 		if err != nil {
-			rec := services.Response("MLHub", http.StatusInternalServerError, services.ReaderError, err)
+			rec := services.Response("MLHub", http.StatusInternalServerError, services.StorageError, err)
 			c.JSON(http.StatusInternalServerError, rec)
 			return
 		}
-		c.JSON(http.StatusOK, services.Response("MLHub", http.StatusOK, 0, nil))
-		return
+		spec := bson.M{"model": model, "type": mlType, "version": version}
+		err := metaRemove(spec)
+		if err != nil {
+			rec := services.Response("MLHub", http.StatusInternalServerError, services.MetaError, err)
+			c.JSON(http.StatusInternalServerError, rec)
+			return
+		}
 	}
-	rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, errors.New("no model name is provided"))
-	c.JSON(http.StatusBadRequest, rec)
+	c.JSON(http.StatusOK, services.Response("MLHub", http.StatusOK, 0, nil))
 }
 
 // ModelsHandler provides information about registered ML models
