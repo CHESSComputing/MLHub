@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	srvConfig "github.com/CHESSComputing/golib/config"
 	mongo "github.com/CHESSComputing/golib/mongo"
 	bson "go.mongodb.org/mongo-driver/bson"
@@ -60,8 +58,9 @@ func metaRecords(model, mlType, version string) ([]Record, error) {
 	var records []Record
 	for _, rec := range results {
 		r := Record{}
-		fmt.Println("$$$ mongo result record", rec)
-		// TODO: add rec to r
+		delete(rec, "_id")
+		// assign rec (type map) to MetaData
+		r.MetaData = rec
 		records = append(records, r)
 	}
 	return records, nil

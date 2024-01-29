@@ -7,6 +7,7 @@ package main
 import (
 	"embed"
 	"log"
+	"net/http"
 
 	srvConfig "github.com/CHESSComputing/golib/config"
 	mongo "github.com/CHESSComputing/golib/mongo"
@@ -29,15 +30,16 @@ func setupRouter() *gin.Engine {
 	routes := []server.Route{
 		server.Route{Method: "GET", Path: "/docs/:name", Handler: DocsHandler, Authorized: false},
 		server.Route{Method: "GET", Path: "/models", Handler: ModelsHandler, Authorized: false},
-		server.Route{Method: "GET", Path: "/models/:model", Handler: DownloadHandler, Authorized: true},
+		server.Route{Method: "GET", Path: "/models/:name", Handler: DownloadHandler, Authorized: true},
 
 		server.Route{Method: "POST", Path: "/predict", Handler: PredictHandler, Authorized: true, Scope: "read"},
 		server.Route{Method: "POST", Path: "/upload", Handler: UploadHandler, Authorized: true, Scope: "write"},
 
-		server.Route{Method: "DELETE", Path: "/models/:model", Handler: DeleteHandler, Authorized: true, Scope: "delete"},
+		server.Route{Method: "DELETE", Path: "/models/:name", Handler: DeleteHandler, Authorized: true, Scope: "delete"},
 	}
 
 	r := server.Router(routes, nil, "static", srvConfig.Config.MLHub.WebServer)
+	r.StaticFS("/bundles", http.Dir(StorageDir))
 	return r
 }
 

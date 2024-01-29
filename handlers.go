@@ -8,7 +8,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -17,6 +16,11 @@ import (
 	services "github.com/CHESSComputing/golib/services"
 	"github.com/gin-gonic/gin"
 )
+
+// DocParam defines parameters for uri binding
+type DocParams struct {
+	Name string `uri:"name" binding:"required"`
+}
 
 // helper function to check if HTTP request contains form-data
 func formData(r *http.Request) bool {
@@ -55,34 +59,18 @@ func PredictHandler(c *gin.Context) {
 	return
 }
 
-// DownloadHandler handles download action of ML model from back-end server
+// DownloadHandler handles download action of ML model from back-end server via
+// /models/:name?type=TensorFlow&version=123
 func DownloadHandler(c *gin.Context) {
-	r := c.Request
-	w := c.Writer
-	if r.Method == "GET" && !strings.Contains(r.URL.Path, "/model") {
-		fname := fmt.Sprintf("%s/md/download.md", StaticDir)
-		content, err := server.MDToHTML(StaticFs, fname)
-		if err != nil {
-			rec := services.Response("MLHub", http.StatusInternalServerError, services.ReaderError, err)
-			c.JSON(http.StatusInternalServerError, rec)
-			return
-		}
-
-		tmpl := make(map[string]any)
-		tmpl["Title"] = "MLHub download"
-		tmpl["Content"] = template.HTML(content)
-
-		page := server.TmplPage(StaticFs, "download.tmpl", tmpl)
-		header := server.TmplPage(StaticFs, "header.tmpl", tmpl)
-		footer := server.TmplPage(StaticFs, "footer.tmpl", tmpl)
-		w.Write([]byte(header + page + footer))
+	var doc DocParams
+	if err := c.ShouldBindUri(&doc); err != nil {
+		rec := services.Response("MLHub", http.StatusBadRequest, services.BindError, err)
+		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
-
-	// CLI /model/:mname/download
-	model := r.FormValue("model")
-	mlType := r.FormValue("type")
-	version := r.FormValue("version")
+	model := doc.Name
+	mlType := c.Request.FormValue("type")
+	version := c.Request.FormValue("version")
 	// check if record exist in MetaData database
 	records, err := metaRecords(model, mlType, version)
 	if err != nil {
@@ -97,12 +85,25 @@ func DownloadHandler(c *gin.Context) {
 		return
 	}
 	rec := records[0]
+	// get bundle link
+	val, ok := rec.MetaData["bundle"]
+	if !ok {
+		msg := fmt.Sprintf("No bundle file found for model=%s type=%s version=%s", model, mlType, version)
+		rec := services.Response("MLHub", http.StatusBadRequest, services.NotFoundError, errors.New(msg))
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
+	fileName := val.(string)
+	fname := findModelFile(fileName, mlType, version)
 	// form link to download the model bundle
-	downloadURL := fmt.Sprintf("/bundles/%s/%s/%s/%s", mlType, model, version, rec.Bundle)
+	bname := strings.Replace(fname, StorageDir, "", -1)
+	downloadURL := fmt.Sprintf("/bundles%s", bname)
 	if Verbose > 0 {
 		log.Println("download", downloadURL)
 	}
-	http.Redirect(w, r, downloadURL, http.StatusSeeOther)
+
+	//     http.Redirect(c.Writer, c.Request, downloadURL, http.StatusSeeOther)
+	c.Redirect(http.StatusSeeOther, downloadURL)
 }
 
 // UploadHandler handles upload action of ML model to back-end server
@@ -199,23 +200,18 @@ func DeleteHandler(c *gin.Context) {
 // ModelsHandler provides information about registered ML models
 func ModelsHandler(c *gin.Context) {
 	// TODO: Add parameters for /models endpoint, eg q=query, limit, idx for pagination
-	records, err := metaRecords("", "", "")
+	var records []map[string]any
+	mRecords, err := metaRecords("", "", "")
 	if err != nil {
 		msg := fmt.Sprintf("unable to get meta-data, error=%v", err)
 		rec := services.Response("MLHub", http.StatusInternalServerError, services.ReaderError, errors.New(msg))
 		c.JSON(http.StatusInternalServerError, rec)
 		return
 	}
-	r := c.Request
-	if r.Header.Get("Accept") == "application/json" {
-		c.JSON(http.StatusOK, records)
-		return
+	for _, r := range mRecords {
+		records = append(records, r.MetaData)
 	}
-}
-
-// DocParam defines parameters for /docs end-point
-type DocParams struct {
-	Name string `uri:"name" binding:"required"`
+	c.JSON(http.StatusOK, records)
 }
 
 // DocsHandler handles status of MLHub server

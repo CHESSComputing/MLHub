@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	srvConfig "github.com/CHESSComputing/golib/config"
@@ -289,4 +290,32 @@ func modelRecord(r *http.Request) (Record, error) {
 	}
 	rec = records[0]
 	return rec, nil
+}
+
+// helper function to find model file name for given parameters
+func findModelFile(fileName, mlType, version string) string {
+	var fname string
+	if version == "" {
+		version = "latest"
+	}
+	if mlType != "" {
+		fname = fmt.Sprintf("%s/%s/%s/%s", StorageDir, mlType, version, fileName)
+	}
+	if Verbose > 0 {
+		log.Printf("search fileName=%s mlType=%s version=%s", fileName, mlType, version)
+	}
+	// otherwise walk throught directory structure to find our file name
+	pat := fmt.Sprintf("%s$", fileName)
+	regExp, err := regexp.Compile(pat)
+	err = filepath.Walk(StorageDir, func(path string, info os.FileInfo, err error) error {
+		if err == nil && regExp.MatchString(info.Name()) {
+			fname = path
+			return nil
+		}
+		return nil
+	})
+	if err != nil {
+		log.Println("Unable to find %s file in %s for type=%s version=%s", fileName, StorageDir, mlType, version)
+	}
+	return fname
 }
