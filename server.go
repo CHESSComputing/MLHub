@@ -35,7 +35,7 @@ func setupRouter() *gin.Engine {
 		server.Route{Method: "POST", Path: "/predict", Handler: PredictHandler, Authorized: true, Scope: "read"},
 		server.Route{Method: "POST", Path: "/upload", Handler: UploadHandler, Authorized: true, Scope: "write"},
 
-		server.Route{Method: "DELETE", Path: "/models/:name", Handler: DeleteHandler, Authorized: true, Scope: "delete"},
+		server.Route{Method: "DELETE", Path: "/delete", Handler: DeleteHandler, Authorized: true, Scope: "delete"},
 	}
 
 	r := server.Router(routes, nil, "static", srvConfig.Config.MLHub.WebServer)
