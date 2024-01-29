@@ -172,7 +172,7 @@ func Upload(rec Record, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = uploadStorage(rec, r)
+	err = bundle2Storage(rec, r)
 	if err != nil {
 		return err
 	}
@@ -193,10 +193,16 @@ func uploadRecord(rec Record) error {
 	return err
 }
 
-// helper function to upload bundle to server storage
-func uploadStorage(rec Record, r *http.Request) error {
+// helper function to remove bundle from our storate
+func removeBundle(rec Record) error {
+	modelDir := fmt.Sprintf("%s/%s/%s/%s", StorageDir, rec.Type, rec.Model, rec.Version)
+	return os.RemoveAll(modelDir)
+}
+
+// helper function to put bundle to the server storage
+func bundle2Storage(rec Record, r *http.Request) error {
 	if Verbose > 0 {
-		log.Printf("uploadStorage %+v", rec)
+		log.Printf("bundle2Storage %+v", rec)
 	}
 	// parse incoming HTTP request multipart form
 	err := r.ParseMultipartForm(32 << 20) // maxMemory
