@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strings"
 
+	authz "github.com/CHESSComputing/golib/authz"
+	srvConfig "github.com/CHESSComputing/golib/config"
 	server "github.com/CHESSComputing/golib/server"
 	services "github.com/CHESSComputing/golib/services"
 	"github.com/gin-gonic/gin"
@@ -124,9 +126,25 @@ func UploadHandler(c *gin.Context) {
 	backend := r.FormValue("backend")
 	bundle := r.FormValue("file")
 	version := r.FormValue("version")
+	if version == "" {
+		version = "latest"
+	}
 	reference := r.FormValue("reference")
 	discipline := r.FormValue("discipline")
 	description := r.FormValue("description")
+	if mlType == "" || backend == "" || model == "" {
+		msg := "Unable to upload your ML model"
+		if mlType == "" {
+			msg += ", ML type parameter is empty"
+		} else if backend == "" {
+			msg += ", ML backend parameter is empty"
+		} else if model == "" {
+			msg += ", ML model parameter is empty"
+		}
+		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, errors.New(msg))
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
 
 	if Verbose > 0 {
 		log.Printf("### model=%v type=%v bundle=%v version=%v ref=%v dis=%v desc=%v", model, mlType, bundle, version, reference, discipline, description)
@@ -159,13 +177,20 @@ func UploadHandler(c *gin.Context) {
 		Reference:   reference,
 		Bundle:      bundle,
 	}
+	token := authz.BearerToken(r)
+	claims, err := authz.TokenClaims(token, srvConfig.Config.Authz.ClientID)
+	if err != nil {
+		rec := services.Response("MLHub", http.StatusBadRequest, services.AuthError, err)
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
+	rclaims := claims.RegisteredClaims
+	user := rclaims.Subject
 	// assign oauth attributes to the record
-	rec.UserName = "TODO-getuser from context"
-	rec.UserID = "TODO-getuserid"
-	rec.Provider = "TODO-get provider if necessary"
+	rec.UserName = user
 
 	// perform upload action
-	err := Upload(rec, r)
+	err = Upload(rec, r)
 	if err != nil {
 		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
 		c.JSON(http.StatusBadRequest, rec)
