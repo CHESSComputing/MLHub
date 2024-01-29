@@ -3,9 +3,8 @@ module github.com/CHESSComputing/MLHub
 go 1.21.6
 
 require (
-	github.com/CHESSComputing/golib v0.0.9
+	github.com/CHESSComputing/golib v0.1.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/gomarkdown/markdown v0.0.0-20231222211730-1d6d20845b47
 	go.mongodb.org/mongo-driver v1.13.1
 )
 
@@ -27,6 +26,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20231222211730-1d6d20845b47 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
