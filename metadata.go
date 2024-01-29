@@ -10,7 +10,7 @@ import (
 func metaInsert(rec Record) error {
 	var records []any
 	records = append(records, rec)
-	mongo.InsertAny(
+	mongo.UpsertAny(
 		srvConfig.Config.MLHub.MongoDB.DBName,
 		srvConfig.Config.MLHub.MongoDB.DBColl,
 		records)
