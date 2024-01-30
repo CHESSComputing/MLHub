@@ -78,6 +78,7 @@ func PredictJSONInput(uri string, rec Record, r *http.Request) ([]byte, string, 
 		return data, mtype, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	rsp, err := client.Do(req)
 	if rsp.StatusCode != http.StatusOK {
 		msg := fmt.Sprintf("request to %s failed with response code: %d", rec.Backend, rsp.StatusCode)
