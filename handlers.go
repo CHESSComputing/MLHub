@@ -45,11 +45,16 @@ func PredictHandler(c *gin.Context) {
 
 	// parse input JSON payload
 	var spec Record
-	c.BindJSON(&spec)
+	err := c.BindJSON(&spec)
+	if err != nil {
+		rec := services.Response("MLHub", http.StatusBadRequest, services.BindError, err)
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
 
 	rec, err := modelRecord(spec)
 	if err != nil {
-		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
+		rec := services.Response("MLHub", http.StatusBadRequest, services.GenericError, err)
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
@@ -65,7 +70,7 @@ func PredictHandler(c *gin.Context) {
 		}
 		return
 	}
-	resp := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
+	resp := services.Response("MLHub", http.StatusBadRequest, services.PredictError, err)
 	c.JSON(http.StatusBadRequest, resp)
 }
 
@@ -84,13 +89,13 @@ func DownloadHandler(c *gin.Context) {
 	// check if record exist in MetaData database
 	records, err := metaRecords(model, mlType, version)
 	if err != nil {
-		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
+		rec := services.Response("MLHub", http.StatusBadRequest, services.MetaError, err)
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
 	if len(records) != 1 {
 		msg := fmt.Sprintf("Too many records for provide model=%s type=%s version=%s", model, mlType, version)
-		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, errors.New(msg))
+		rec := services.Response("MLHub", http.StatusBadRequest, services.GenericError, errors.New(msg))
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
@@ -111,7 +116,7 @@ func UploadHandler(c *gin.Context) {
 
 	// check if we provided with proper form data
 	if !formData(r) {
-		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, errors.New("unable to get form data"))
+		rec := services.Response("MLHub", http.StatusBadRequest, services.FormDataError, errors.New("unable to get form data"))
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
@@ -138,7 +143,7 @@ func UploadHandler(c *gin.Context) {
 		} else if model == "" {
 			msg += ", ML model parameter is empty"
 		}
-		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, errors.New(msg))
+		rec := services.Response("MLHub", http.StatusBadRequest, services.FormDataError, errors.New(msg))
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
@@ -152,7 +157,7 @@ func UploadHandler(c *gin.Context) {
 		// parse incoming HTTP request multipart form
 		err := r.ParseMultipartForm(32 << 20) // maxMemory
 		if err != nil {
-			rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
+			rec := services.Response("MLHub", http.StatusBadRequest, services.FormDataError, err)
 			c.JSON(http.StatusBadRequest, rec)
 			return
 		}
@@ -186,7 +191,7 @@ func UploadHandler(c *gin.Context) {
 	// perform upload action
 	err = Upload(rec, r)
 	if err != nil {
-		rec := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
+		rec := services.Response("MLHub", http.StatusBadRequest, services.UploadError, err)
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
@@ -204,13 +209,13 @@ func DeleteHandler(c *gin.Context) {
 	version := spec.Version
 	if version == "" {
 		msg := "HTTP request does not provide ML model version"
-		rec := services.Response("MLHub", http.StatusBadRequest, services.HttpRequestError, errors.New(msg))
+		rec := services.Response("MLHub", http.StatusBadRequest, services.FormDataError, errors.New(msg))
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
 	if mlType == "" {
 		msg := "HTTP request does not provide ML model type"
-		rec := services.Response("MLHub", http.StatusBadRequest, services.HttpRequestError, errors.New(msg))
+		rec := services.Response("MLHub", http.StatusBadRequest, services.FormDataError, errors.New(msg))
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
@@ -248,7 +253,7 @@ func ModelsHandler(c *gin.Context) {
 	mRecords, err := metaRecords("", "", "")
 	if err != nil {
 		msg := fmt.Sprintf("unable to get meta-data, error=%v", err)
-		rec := services.Response("MLHub", http.StatusInternalServerError, services.ReaderError, errors.New(msg))
+		rec := services.Response("MLHub", http.StatusInternalServerError, services.MetaError, errors.New(msg))
 		c.JSON(http.StatusInternalServerError, rec)
 		return
 	}
@@ -266,7 +271,7 @@ func DocsHandler(c *gin.Context) {
 	fname := fmt.Sprintf("%s/md/%s.md", StaticDir, doc.Name)
 	content, err := server.MDToHTML(StaticFs, fname)
 	if err != nil {
-		rec := services.Response("MLHub", http.StatusInternalServerError, services.ReaderError, err)
+		rec := services.Response("MLHub", http.StatusInternalServerError, services.MarkdownError, err)
 		c.JSON(http.StatusInternalServerError, rec)
 		return
 	}
