@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -8,6 +9,15 @@ import (
 
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("URI %+v Header: %+v TLS: %+v", r.RequestURI, r.Header, r.TLS)
+	if r.Header.Get("Accept") == "application/json" && r.Method == "POST" {
+		data, err := io.ReadAll(r.Body)
+		if err == nil {
+			w.Write(data)
+		} else {
+			w.Write([]byte(err.Error()))
+		}
+		return
+	}
 	if req, err := httputil.DumpRequest(r, true); err == nil {
 		w.Write(req)
 	}
