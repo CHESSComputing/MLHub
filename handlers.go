@@ -58,7 +58,11 @@ func PredictHandler(c *gin.Context) {
 	}
 	data, mtype, err := Predict(rec, r)
 	if err == nil {
-		c.Data(http.StatusOK, mtype, data)
+		if mtype == "application/json" {
+			c.JSON(http.StatusOK, data)
+		} else {
+			c.Data(http.StatusOK, mtype, data)
+		}
 		return
 	}
 	resp := services.Response("MLHub", http.StatusBadRequest, services.ReaderError, err)
