@@ -1,4 +1,8 @@
 # MLHub
+![build status](https://github.com/CHESSComputing/MLHub/actions/workflows/go.yml/badge.svg)
+[![go report card](https://goreportcard.com/badge/github.com/CHESSComputing/MLHub)](https://goreportcard.com/report/github.com/CHESSComputing/MLHub)
+[![godoc](https://godoc.org/github.com/CHESSComputing/MLHub?status.svg)](https://godoc.org/github.com/CHESSComputing/MLHub)
+
 MLHUb for CHESS
 
 ### API usage
