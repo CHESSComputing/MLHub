@@ -17,6 +17,7 @@ type Record struct {
 	Bundle      string `json:"bundle"`      // ML bundle file
 	UserName    string `json:"username"`    // user name
 	Input       any    `json:"input"`       // prediction input
+	Data        []byte `json:"data"`        // input data, e.g. image.png
 }
 
 // MLTypes defines supported ML data types
