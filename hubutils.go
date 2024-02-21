@@ -357,6 +357,23 @@ func modelRecord(rec Record) (Record, error) {
 	}
 	// assign input data to our meta-data record
 	record.Input = rec.Input
+	// check if given input is in fact actual file
+	fname := fmt.Sprintf("%v", record.Input)
+	if _, err := os.Stat(fname); err == nil {
+		file, err := os.Open(fname)
+		if err != nil {
+			log.Println("unable to open", fname, err)
+			return rec, err
+		}
+		defer file.Close()
+		data, err := io.ReadAll(file)
+		if err != nil {
+			log.Println("unable to read", fname, err)
+			return rec, err
+		}
+		record.Data = data
+	}
+
 	// convert mongo record (map[string]any) to Record data type
 	data, err := json.Marshal(record)
 	if err != nil {
