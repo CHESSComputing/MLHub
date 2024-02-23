@@ -3,9 +3,9 @@ module github.com/CHESSComputing/MLHub
 go 1.22.0
 
 require (
-	github.com/CHESSComputing/golib v0.1.5
+	github.com/CHESSComputing/golib v0.1.6
 	github.com/gin-gonic/gin v1.9.1
-	go.mongodb.org/mongo-driver v1.13.1
+	go.mongodb.org/mongo-driver v1.14.0
 )
 
 require (
