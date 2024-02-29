@@ -31,6 +31,22 @@ curl http://localhost:port/predict \
 where input.json has the form:
 {"input":[1,2,3], "model": "model", "type": "TensorFlow", "backend": "GoFake"}
 
+# upload MNIST model
+curl http://localhost:port/upload \
+    -v -X POST -H "Authorization: bearer $token" \
+    -F 'file=@./mnist.tar.gz' \
+    -F 'model=mnist' \
+    -F 'type=TensorFlow' \
+    -F 'backend=TFaaS'
+
+# predict MNIST image
+curl http://localhost:port/predict/image \
+    -v -X POST -H "Authorization: bearer $token" \
+    -F 'image=@./img1.png' \
+    -F 'model=mnist' \
+    -F 'type=TensorFlow' \
+    -F 'backend=TensorFlow'
+
 # delete existing model
 curl http://localhost:port/delete
     -v -X DELETE \
