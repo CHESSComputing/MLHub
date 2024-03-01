@@ -348,7 +348,10 @@ func modelRecord(rec Record) (Record, error) {
 	}
 	// we should have only one record from MetaData
 	if len(records) != 1 {
-		msg := fmt.Sprintf("Incorrect number of MetaData records %+v", records)
+		msg := fmt.Sprintf("Ambiguous request, ML records %+v", records)
+		if len(records) == 0 {
+			msg = fmt.Sprintf("No ML records found for your request")
+		}
 		return rec, errors.New(msg)
 	}
 	record = records[0]
