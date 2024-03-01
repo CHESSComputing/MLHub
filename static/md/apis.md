@@ -1,61 +1,63 @@
 # MLHub APIs
-- `/model/<name>` end-point provides the following methods:
-  - `GET` HTTP request will retrieve ML meta-data for provide ML name, e.g.
-```
-# fetch meta-data info about ML model
-curl http://localhost:port/model/mnist
-```
-  - `POST` HTTP request will create new ML entry in MLHub for provided
-  ML meta-data JSON record and ML tarball
-```
-# post ML meta-data
-curl -X POST \
-     -H "content-type: application/json" \
-     -d '{"model": "mnist", "type": "TensorFlow", "meta": {}}' \
-     http://localhost:port/model/mnist
-```
-  - `PUT` HTTP request will update exsiting ML entry in MLHub for provided
-  ML meta-data JSON record
-```
-# post ML meta-data
-curl -X PUT \
-     -H "content-type: application/json" \
-     -d '{"model": "mnist", "type": "TensorFlow", "meta": {"param": 1}}' \
-     http://localhost:port/model/mnist
-```
-  - `DELETE` HTTP request will delete ML entry in MLHub for provided ML name
-```
-curl -X DELETE \
-     http://localhost:port/model/mnist
-```
-- `/models` to list existing ML models, GET HTTP request
-```
-# to get all ML models
-curl http://localhost:port/models
-```
+MLHub provides the following set of APIs
+- `/upload` to upload ML models to a specific back-end
+- `/predict` to fetch predictions from specific ML model
+- `/delete` to delete ML model from MLHub
+- `/docs` to provide documentation about MLHub
+Below you can find specific exmaples of individual APIs
 
-### ML model APIs
-- `/model/<model_name>/upload` uploads ML model bundle
+### API usage
 ```
 # upload ML model
-curl -X POST -H "Content-Encoding: gzip" \
-     -H "content-type: application/octet-stream" \
-     --data-binary @./mnist.tar.gz \
-     http://localhost:port/model/mnist/upload
-```
-- `/model/<model_name>/download` downloads ML model bundle
-```
-curl http://localhost:port/model/mnist/download
-```
-- `/model/<model_name>/predict` to get prediction from a given ML model.
-```
-# provide prediction for given input vector
-curl -X GET \
-     -H "content-type: application/json" \
-     -d '{"input": [input values]}' \
-     http://localhost:port/model/mnist/predict
+curl http://localhost:port/upload \
+    -v -X POST \
+    -H "Authorization: bearer $token" \
+    -F 'file=@/path/model.tar.gz' \
+    -F 'model=model' -F 'type=TensorFlow' -F 'backend=GoFake'
 
-# provide prediction for given image file
-curl http://localhost:8083/model/mnist \
-     -F 'image=@./img4.png'
+# list current models
+curl http://localhost:port/models
+
+# download specific model
+curl http://localhost:port/models/<model_name>
+
+# predict results for given model for provided file.json input
+curl http://localhost:port/predict \
+    -v -X POST \
+    -H "Authorization: bearer $token" \
+    -H "Accept: applicatin/json" \
+    -H "Content-type: application/json" \
+    -d@/path/input.json
+
+where input.json has the form:
+{"input":[1,2,3], "model": "model", "type": "TensorFlow", "backend": "GoFake"}
+
+# upload MNIST model
+curl http://localhost:port/upload \
+    -v -X POST -H "Authorization: bearer $token" \
+    -F 'file=@./mnist.tar.gz' \
+    -F 'model=mnist' \
+    -F 'type=TensorFlow' \
+    -F 'backend=TFaaS'
+
+# predict MNIST image
+curl http://localhost:port/predict \
+    -v -X POST -H "Authorization: bearer $token" \
+    -F 'image=@./img1.png' \
+    -F 'model=mnist' \
+    -F 'type=TensorFlow' \
+    -F 'backend=TensorFlow'
+
+# delete existing model
+curl http://localhost:port/delete
+    -v -X DELETE \
+    -H "Authorization: bearer $token" \
+    -H "Content-type: application/json" \
+    -d@/path/model.json
+
+where model.json has the form:
+{"model": "model", "type": "TensorFlow", "version": "latest"}
+
+# get documentation
+curl http://localhost:port/docs/docs
 ```

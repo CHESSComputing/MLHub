@@ -40,7 +40,7 @@ curl http://localhost:port/upload \
     -F 'backend=TFaaS'
 
 # predict MNIST image
-curl http://localhost:port/predict/image \
+curl http://localhost:port/predict \
     -v -X POST -H "Authorization: bearer $token" \
     -F 'image=@./img1.png' \
     -F 'model=mnist' \
