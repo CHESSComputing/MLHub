@@ -26,5 +26,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/predict", RequestHandler)
 	http.HandleFunc("/upload", RequestHandler)
-	http.ListenAndServe(":8888", nil)
+	port := ":8888"
+	log.Println("Start GoFake HTTP server on port", port)
+	http.ListenAndServe(port, nil)
 }
