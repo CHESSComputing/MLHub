@@ -39,62 +39,31 @@ func formData(r *http.Request) bool {
 	return false
 }
 
-// PredictImageHandler handles image action of ML model to back-end server
-func PredictImageHandler(c *gin.Context) {
-	r := c.Request
-
-	// check if we provided with proper form data
-	if !formData(r) {
-		rec := services.Response("MLHub", http.StatusBadRequest, services.FormDataError, errors.New("unable to get form data"))
-		c.JSON(http.StatusBadRequest, rec)
-		return
-	}
-
-	// handle upload POST requests
-	var rec Record
-	model := r.FormValue("model")
-	mlType := r.FormValue("type")
-	backend := r.FormValue("backend")
-	spec := Record{
-		Model:   model,
-		Type:    mlType,
-		Backend: backend,
-	}
-
-	rec, err := modelRecord(spec)
-	if err != nil {
-		rec := services.Response("MLHub", http.StatusBadRequest, services.GenericError, err)
-		c.JSON(http.StatusBadRequest, rec)
-		return
-	}
-	if Verbose > 0 {
-		log.Printf("InferenceHandler found %+v", rec)
-	}
-	r.Header.Set("Accept", "application/octet-stream")
-	data, mtype, err := Predict(rec, r)
-	if err == nil {
-		if mtype == "application/json" {
-			c.JSON(http.StatusOK, data)
-		} else {
-			c.Data(http.StatusOK, mtype, data)
-		}
-		return
-	}
-	resp := services.Response("MLHub", http.StatusBadRequest, services.PredictError, err)
-	c.JSON(http.StatusBadRequest, resp)
-}
-
 // PredictHandler handles GET HTTP requests
 func PredictHandler(c *gin.Context) {
 	r := c.Request
 
-	// parse input JSON payload
 	var spec Record
-	err := c.BindJSON(&spec)
-	if err != nil {
-		rec := services.Response("MLHub", http.StatusBadRequest, services.BindError, err)
-		c.JSON(http.StatusBadRequest, rec)
-		return
+	// check if we provided with proper form data
+	if formData(r) {
+		// handle form predict request, e.g. predict image
+		model := r.FormValue("model")
+		mlType := r.FormValue("type")
+		backend := r.FormValue("backend")
+		spec = Record{
+			Model:   model,
+			Type:    mlType,
+			Backend: backend,
+		}
+		r.Header.Set("Accept", "application/octet-stream")
+	} else {
+		// hadle JSON predict request
+		err := c.BindJSON(&spec)
+		if err != nil {
+			rec := services.Response("MLHub", http.StatusBadRequest, services.BindError, err)
+			c.JSON(http.StatusBadRequest, rec)
+			return
+		}
 	}
 
 	rec, err := modelRecord(spec)

@@ -32,7 +32,6 @@ func setupRouter() *gin.Engine {
 		server.Route{Method: "GET", Path: "/models", Handler: ModelsHandler, Authorized: false},
 		server.Route{Method: "GET", Path: "/models/:name", Handler: DownloadHandler, Authorized: true},
 
-		server.Route{Method: "POST", Path: "/predict/image", Handler: PredictImageHandler, Authorized: true, Scope: "read"},
 		server.Route{Method: "POST", Path: "/predict", Handler: PredictHandler, Authorized: true, Scope: "read"},
 		server.Route{Method: "POST", Path: "/upload", Handler: UploadHandler, Authorized: true, Scope: "write"},
 
