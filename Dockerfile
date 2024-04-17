@@ -19,3 +19,4 @@ COPY --from=go-builder /build/static /data/static
 LABEL org.opencontainers.image.description="FOXDEN MLHub service"
 LABEL org.opencontainers.image.source=https://github.com/chesscomputing/mlhub
 LABEL org.opencontainers.image.licenses=MIT
+WORKDIR /data
