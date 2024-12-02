@@ -17,7 +17,6 @@ import (
 	server "github.com/CHESSComputing/golib/server"
 	services "github.com/CHESSComputing/golib/services"
 	"github.com/gin-gonic/gin"
-	bson "go.mongodb.org/mongo-driver/bson"
 )
 
 // DocParam defines parameters for uri binding
@@ -250,7 +249,7 @@ func DeleteHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, rec)
 			return
 		}
-		spec := bson.M{"model": model, "type": mlType, "version": version}
+		spec := map[string]any{"model": model, "type": mlType, "version": version}
 		err := metaRemove(spec)
 		if err != nil {
 			rec := services.Response("MLHub", http.StatusInternalServerError, services.MetaError, err)

@@ -6,7 +6,6 @@ import (
 
 	srvConfig "github.com/CHESSComputing/golib/config"
 	mongo "github.com/CHESSComputing/golib/mongo"
-	bson "go.mongodb.org/mongo-driver/bson"
 )
 
 // metaInsert inserts record into MLHub database
@@ -22,8 +21,8 @@ func metaInsert(rec Record) error {
 
 // metaUpdate updates record in MLHub database
 func metaUpdate(rec Record) error {
-	spec := bson.M{"model": rec.Model}
-	meta := bson.M{"model": rec.Model, "type": rec.Type}
+	spec := map[string]any{"model": rec.Model}
+	meta := map[string]any{"model": rec.Model, "type": rec.Type}
 	if Verbose > 0 {
 		log.Printf("update meta-record for spec %+v", spec)
 	}
@@ -36,7 +35,7 @@ func metaUpdate(rec Record) error {
 }
 
 // metaRemove removes given model from MLHub database
-func metaRemove(spec bson.M) error {
+func metaRemove(spec map[string]any) error {
 	if Verbose > 0 {
 		log.Printf("remove meta-record for spec %+v", spec)
 	}
@@ -49,7 +48,7 @@ func metaRemove(spec bson.M) error {
 
 // metaRecords retrieves records from underlying MLHub database
 func metaRecords(model, mlType, version string) ([]Record, error) {
-	spec := bson.M{}
+	spec := map[string]any{}
 	if model != "" {
 		spec["model"] = model
 	}
