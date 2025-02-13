@@ -3,7 +3,7 @@ module github.com/CHESSComputing/MLHub
 go 1.23.6
 
 require (
-	github.com/CHESSComputing/golib v0.6.8
+	github.com/CHESSComputing/golib v0.6.9
 	github.com/gin-gonic/gin v1.10.0
 )
 
