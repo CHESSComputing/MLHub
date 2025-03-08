@@ -1,9 +1,11 @@
 module github.com/CHESSComputing/MLHub
 
-go 1.24.0
+go 1.24.1
+
+replace github.com/CHESSComputing/golib => ../golib
 
 require (
-	github.com/CHESSComputing/golib v0.7.2
+	github.com/CHESSComputing/golib v0.7.3
 	github.com/gin-gonic/gin v1.10.0
 )
 
@@ -90,5 +92,3 @@ require (
 	gopkg.in/jcmturner/rpc.v1 v1.1.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/CHESSComputing/golib => ../golib
