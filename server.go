@@ -28,14 +28,14 @@ var StaticDir, StorageDir string
 // helper function to setup our router
 func setupRouter() *gin.Engine {
 	routes := []server.Route{
-		server.Route{Method: "GET", Path: "/docs/:name", Handler: DocsHandler, Authorized: false},
-		server.Route{Method: "GET", Path: "/models", Handler: ModelsHandler, Authorized: false},
-		server.Route{Method: "GET", Path: "/models/:name", Handler: DownloadHandler, Authorized: true},
+		{Method: "GET", Path: "/docs/:name", Handler: DocsHandler, Authorized: false},
+		{Method: "GET", Path: "/models", Handler: ModelsHandler, Authorized: false},
+		{Method: "GET", Path: "/models/:name", Handler: DownloadHandler, Authorized: true},
 
-		server.Route{Method: "POST", Path: "/predict", Handler: PredictHandler, Authorized: true, Scope: "read"},
-		server.Route{Method: "POST", Path: "/upload", Handler: UploadHandler, Authorized: true, Scope: "write"},
+		{Method: "POST", Path: "/predict", Handler: PredictHandler, Authorized: true, Scope: "read"},
+		{Method: "POST", Path: "/upload", Handler: UploadHandler, Authorized: true, Scope: "write"},
 
-		server.Route{Method: "DELETE", Path: "/delete", Handler: DeleteHandler, Authorized: true, Scope: "delete"},
+		{Method: "DELETE", Path: "/delete", Handler: DeleteHandler, Authorized: true, Scope: "delete"},
 	}
 
 	r := server.Router(routes, nil, "static", srvConfig.Config.MLHub.WebServer)
