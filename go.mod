@@ -1,9 +1,9 @@
 module github.com/CHESSComputing/MLHub
 
-go 1.25.3
+go 1.25.5
 
 require (
-	github.com/CHESSComputing/golib v0.9.6
+	github.com/CHESSComputing/golib v0.9.7
 	github.com/gin-gonic/gin v1.11.0
 )
 
