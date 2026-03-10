@@ -30,7 +30,7 @@ func Predict(rec Record, r *http.Request) ([]byte, string, error) {
 	log.Printf("search ML backend for record: %+v", rec)
 	backend, err := mlBackend(rec.Backend, rec.Type)
 	if err != nil {
-		return []byte{}, mtype, err
+		return []byte{}, mtype, fmt.Errorf("[MLHub.main.Predict] mlBackend error: %w", err)
 	}
 	if Verbose > 0 {
 		log.Printf("found ML backend %+v", backend)
@@ -63,7 +63,7 @@ func PredictJSONInput(uri string, rec Record, r *http.Request) ([]byte, string, 
 	}
 	data, err := json.Marshal(input)
 	if err != nil {
-		return []byte{}, mtype, err
+		return []byte{}, mtype, fmt.Errorf("[MLHub.main.PredictJSONInput] json.Marshal error: %w", err)
 	}
 
 	// form HTTP request
@@ -75,7 +75,7 @@ func PredictJSONInput(uri string, rec Record, r *http.Request) ([]byte, string, 
 	}
 	req, err := http.NewRequest("POST", uri, bytes.NewReader(data))
 	if err != nil {
-		return data, mtype, err
+		return data, mtype, fmt.Errorf("[MLHub.main.PredictJSONInput] http.NewRequest error: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -153,7 +153,7 @@ func PredictMultipart(uri string, rec Record, r *http.Request) ([]byte, string, 
 	}
 	req, err := http.NewRequest("POST", uri, bytes.NewReader(body.Bytes()))
 	if err != nil {
-		return data, mtype, err
+		return data, mtype, fmt.Errorf("[MLHub.main.PredictMultipart] http.NewRequest error: %w", err)
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rsp, err := client.Do(req)
@@ -171,15 +171,15 @@ func PredictMultipart(uri string, rec Record, r *http.Request) ([]byte, string, 
 func Upload(rec Record, r *http.Request) error {
 	err := uploadRecord(rec)
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.Upload] uploadRecord error: %w", err)
 	}
 	err = bundle2Storage(rec, r)
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.Upload] bundle2Storage error: %w", err)
 	}
 	err = uploadBundle(rec, r)
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.Upload] uploadBundle error: %w", err)
 	}
 	return nil
 }
@@ -208,28 +208,28 @@ func bundle2Storage(rec Record, r *http.Request) error {
 	// parse incoming HTTP request multipart form
 	err := r.ParseMultipartForm(32 << 20) // maxMemory
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.bundle2Storage] r.ParseMultipartForm error: %w", err)
 	}
 	// extract file from HTTP request form
 	file, handler, err := r.FormFile("file")
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.bundle2Storage] r.FormFile error: %w", err)
 	}
 
 	defer file.Close()
 	modelDir := fmt.Sprintf("%s/%s/%s/%s", StorageDir, rec.Type, rec.Model, rec.Version)
 	err = os.MkdirAll(modelDir, 0755)
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.bundle2Storage] os.MkdirAll error: %w", err)
 	}
 	fname := filepath.Join(modelDir, handler.Filename)
 	dst, err := os.Create(fname)
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.bundle2Storage] os.Create error: %w", err)
 	}
 	defer dst.Close()
 	if _, err := io.Copy(dst, file); err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.bundle2Storage] io.Copy error: %w", err)
 	}
 	return nil
 }
@@ -273,7 +273,7 @@ func uploadBundleTFaaS(rec Record, r *http.Request) error {
 		log.Println("ML backend", backend)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.uploadBundleTFaaS] mlBackend error: %w", err)
 	}
 
 	// form backe URI
@@ -290,7 +290,7 @@ func uploadBundleTFaaS(rec Record, r *http.Request) error {
 		for _, fh := range vals {
 			file, err := fh.Open()
 			if err != nil {
-				return err
+				return fmt.Errorf("[MLHub.main.uploadBundleTFaaS] fh.Open error: %w", err)
 			}
 			body = io.NopCloser(file)
 		}
@@ -302,7 +302,7 @@ func uploadBundleTFaaS(rec Record, r *http.Request) error {
 	}
 	req, err := http.NewRequest("POST", uri, body)
 	if err != nil {
-		return err
+		return fmt.Errorf("[MLHub.main.uploadBundleTFaaS] http.NewRequest error: %w", err)
 	}
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Content-Type", "application/octet-stream")
@@ -380,12 +380,12 @@ func modelRecord(rec Record) (Record, error) {
 	// convert mongo record (map[string]any) to Record data type
 	data, err := json.Marshal(record)
 	if err != nil {
-		return record, err
+		return record, fmt.Errorf("[MLHub.main.modelRecord] json.Marshal error: %w", err)
 	}
 	var mRec Record
 	err = json.Unmarshal(data, &mRec)
 	if err != nil {
-		return mRec, err
+		return mRec, fmt.Errorf("[MLHub.main.modelRecord] json.Unmarshal error: %w", err)
 	}
 	return mRec, nil
 }
