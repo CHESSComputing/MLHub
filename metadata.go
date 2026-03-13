@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	srvConfig "github.com/CHESSComputing/golib/config"
@@ -31,7 +32,10 @@ func metaUpdate(rec Record) error {
 		srvConfig.Config.MLHub.MongoDB.DBColl,
 		spec,
 		meta)
-	return err
+	if err != nil {
+		return fmt.Errorf("[MLHub.main.metaUpdate] mongo.UpsertRecord error: %w", err)
+	}
+	return nil
 }
 
 // metaRemove removes given model from MLHub database
@@ -43,7 +47,10 @@ func metaRemove(spec map[string]any) error {
 		srvConfig.Config.MLHub.MongoDB.DBName,
 		srvConfig.Config.MLHub.MongoDB.DBColl,
 		spec)
-	return err
+	if err != nil {
+		return fmt.Errorf("[MLHub.main.metaRemove] mongo.Remove error: %w", err)
+	}
+	return nil
 }
 
 // metaRecords retrieves records from underlying MLHub database

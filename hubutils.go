@@ -91,7 +91,10 @@ func PredictJSONInput(uri string, rec Record, r *http.Request) ([]byte, string, 
 	if Verbose > 1 {
 		log.Printf("backend %s return %s error %v", rec.Backend, string(data), err)
 	}
-	return data, mtype, err
+	if err != nil {
+		return data, mtype, fmt.Errorf("[MLHub.main.PredictJSONInput] io.ReadAll error: %w", err)
+	}
+	return data, mtype, nil
 }
 
 func PredictMultipart(uri string, rec Record, r *http.Request) ([]byte, string, error) {
@@ -163,7 +166,10 @@ func PredictMultipart(uri string, rec Record, r *http.Request) ([]byte, string, 
 	mtype = rsp.Header.Get("Content-type")
 	defer rsp.Body.Close()
 	data, err = io.ReadAll(rsp.Body)
-	return data, mtype, err
+	if err != nil {
+		return data, mtype, fmt.Errorf("[MLHub.main.PredictMultipart] io.ReadAll error: %w", err)
+	}
+	return data, mtype, nil
 }
 
 // Upload function uploads record to MetaData database, then
@@ -191,7 +197,10 @@ func uploadRecord(rec Record) error {
 		log.Printf("uploadRecord %+v", rec)
 	}
 	err := metaInsert(rec)
-	return err
+	if err != nil {
+		return fmt.Errorf("[MLHub.main.uploadRecord] metaInsert error: %w", err)
+	}
+	return nil
 }
 
 // helper function to remove bundle from our storate
@@ -317,10 +326,10 @@ func uploadBundleTFaaS(rec Record, r *http.Request) error {
 		// check response status code
 		if rsp.StatusCode != http.StatusOK {
 			msg := fmt.Sprintf("TFaaS response status %s", rsp.Status)
-			err = errors.New(msg)
+			return errors.New(msg)
 		}
 	}
-	return err
+	return fmt.Errorf("[MLHub.main.uploadBundleTFaaS] client.Do error: %w", err)
 }
 
 // helper functiont to upload bundle to Torch backend
@@ -366,13 +375,13 @@ func modelRecord(rec Record) (Record, error) {
 		file, err := os.Open(fname)
 		if err != nil {
 			log.Println("unable to open", fname, err)
-			return rec, err
+			return rec, fmt.Errorf("[MLHub.main.modelRecord] os.Open error: %w", err)
 		}
 		defer file.Close()
 		data, err := io.ReadAll(file)
 		if err != nil {
 			log.Println("unable to read", fname, err)
-			return rec, err
+			return rec, fmt.Errorf("[MLHub.main.modelRecord] io.ReadAll error: %w", err)
 		}
 		record.Data = data
 	}
